@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
 # Data processing
@@ -94,7 +95,7 @@ def forward_prop(X, parameters):
 
 # /---------------------------------------/
 # Cost computation
-def cost_fn(AL, Y):
+def cross_entropy_loss(AL, Y):
     m = X_train.shape[1]
     AL = np.clip(AL, 1e-10, 1 - 1e-10)  # Add epsilon to avoid log(0)
 
@@ -102,6 +103,24 @@ def cost_fn(AL, Y):
     cost = np.squeeze(cost)
 
     return cost
+
+def cross_entropy_with_L2(AL, Y, parameters, lambd):
+    m = Y.shape[1]
+    AL = np.clip(AL, 1e-10, 1 - 1e-10) # Add epsilon to avoid log(0)
+
+    cost = -1/m * np.sum(Y * np.log(AL) + (1 - Y) * np.log(1 - AL)) 
+
+    L2_regularization = 0
+    for key in parameters.keys():
+        if 'W' in key:
+            L2_regularization += np.sum(np.square(parameters[key]))
+    L2_regularization = (1/m) * (lambd/2) * L2_regularization
+
+    cost_L2 = cost + L2_regularization
+    cost_L2 = np.squeeze(cost_L2)
+
+    return cost_L2
+
 
 
 # /---------------------------------------/
@@ -160,30 +179,38 @@ def backpropagation(AL, Y, caches):
 # /---------------------------------------/
 # Gradient descent
 def grad_desc(parameters, grads, lr):
-    params = parameters.copy()
+    #params = parameters.copy()
     L = len(parameters) // 2
 
     for l in range(L):
-        params['W' + str(l+1)] = params['W' + str(l+1)] - lr * grads['dW' +str(l+1)]
-        params['b' + str(l+1)] = params['b' + str(l+1)] - lr * grads['db' +str(l+1)]
+        parameters['W' + str(l+1)] = parameters['W' + str(l+1)] - lr * grads['dW' + str(l+1)]
+        parameters['b' + str(l+1)] = parameters['b' + str(l+1)] - lr * grads['db' + str(l+1)]
 
-    return params
+    return parameters
                                                             
 # /---------------------------------------/
 # Training
-def train(X, Y, num_iterations, lr=0.1):
-    n_0 = X.shape[0]
-    layer_dims = [n_0, 5, 3, 1]
+def train(X, Y, num_iterations, lr=0.01):
+    n_0 = X_train.shape[0]
+    layer_dims = [n_0, 5, 3, 3, 1]
     parameters = initialize_parameters(layer_dims)
 
+    costs = []
     for i in range(num_iterations):
         AL, caches = forward_prop(X, parameters)
-        cost = cost_fn(AL, Y)
+        cost = cross_entropy_with_L2(AL, Y, parameters, lambd=0.01)
         grads = backpropagation(AL, Y, caches)
-        parameters = grad_desc(parameters, grads, lr=0.1)
+        parameters = grad_desc(parameters, grads, lr=0.01)
 
         if i % 100 == 0:
             print(f'Cost after iteration {i}: {cost}')
+            costs.append(cost) 
+
+    plt.plot(range(0, num_iterations, 100), costs)
+    plt.xlabel('Iterations (x100)')
+    plt.ylabel('Cost')
+    plt.title('Cost reduction over time')
+    plt.show()
 
     return parameters
 
@@ -193,13 +220,12 @@ def predict(X, params):
 
     return predictions
 
-params = train(X_train, Y_train, num_iterations=2500, lr=0.1)
-Y_pred_train = predict(X_train, params)
-Y_pred_test = predict(X_test, params)
+parameters = train(X_train, Y_train, num_iterations=2000, lr=0.01)
+Y_pred_train = predict(X_train, parameters)
+Y_pred_test = predict(X_test, parameters)
 
 train_accuracy = np.mean(Y_pred_train == Y_train) * 100
 test_accuracy = np.mean(Y_pred_test == Y_test) * 100
 
 print(f'\nTrain accuracy: {train_accuracy:.2f}%')
 print(f'Test accuracy: {test_accuracy:.2f}%')
-
