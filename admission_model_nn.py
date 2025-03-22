@@ -1,12 +1,13 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split  # TODO build from scratch instead
+from sklearn.preprocessing import StandardScaler  # TODO build from scratch instead
 
 # Data processing
 dataset = pd.read_csv('/Users/Admin/Documents/MachineLearning/datasets/Admission_Predict_Ver1.1.csv')
 # Convert the column chance of admit to 0 or 1
-dataset['Chance of Admit'] = (dataset['Chance of Admit '] >= 0.5).astype(int)
+dataset['Chance of Admit'] = (dataset['Chance of Admit ']) #>= 0.5).astype(int)
 # Load dataset
 X = dataset[['GRE Score', 'TOEFL Score', 'University Rating', 'SOP', 'LOR ', 'CGPA', 'Research']]
 Y = dataset[['Chance of Admit']]
@@ -15,14 +16,11 @@ Y = dataset[['Chance of Admit']]
 
 # Data segmentation
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
-
-# Transpose X and Y to get (n, m) shape
-X_train = X_train.T  # Shape (7, 400)
-X_test = X_test.T  # Shape (7, 100)
-
-# Convert Y to (1, m)
-Y_train = Y_train.values.reshape(1 , -1)
-Y_test = Y_test.values.reshape(1, -1)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train).T  # Shape (7, 400)
+X_test = scaler.transform(X_test).T  # Shape (7, 100)
+Y_train = Y_train.values.reshape(1 , -1) # (1, 400)
+Y_test = Y_test.values.reshape(1, -1) # (1, 100)
 
 # /---------------------------------------/
 # Activation functions (forward & back prop)
@@ -37,8 +35,7 @@ def sigmoid_derivative(Z):
     return s * (1 - s)
 
 def relu_derivative(Z):
-    dZ = np.where(Z > 0, 1, 0)
-    return dZ
+    return np.where(Z > 0, 1, 0)
 
 # /---------------------------------------/
 # He initialization
@@ -95,15 +92,6 @@ def forward_prop(X, parameters):
 
 # /---------------------------------------/
 # Cost computation
-def cross_entropy_loss(AL, Y):
-    m = X_train.shape[1]
-    AL = np.clip(AL, 1e-10, 1 - 1e-10)  # Add epsilon to avoid log(0)
-
-    cost = -1/m * np.sum(Y * np.log(AL) + (1 - Y) * np.log(1 - AL))
-    cost = np.squeeze(cost)
-
-    return cost
-
 def cross_entropy_with_L2(AL, Y, parameters, lambd):
     m = Y.shape[1]
     AL = np.clip(AL, 1e-10, 1 - 1e-10) # Add epsilon to avoid log(0)
@@ -157,7 +145,6 @@ def backpropagation(AL, Y, caches):
     
     L = len(caches)
     m = AL.shape[1]
-    #Y = Y.reshape(AL.shape) Already reshaped at lines 23, 24
     AL = np.clip(AL, 1e-10, 1 - 1e-10) # Add epsilon to avoid Y/0
     dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
 
@@ -192,7 +179,7 @@ def grad_desc(parameters, grads, lr):
 # Training
 def train(X, Y, num_iterations, lr=0.01):
     n_0 = X_train.shape[0]
-    layer_dims = [n_0, 5, 3, 3, 1]
+    layer_dims = [n_0, 30, 8, 5, 3, 1]  #[n_0, 10, 5, 1]  [n_0, 30, 8, 5, 3, 1]
     parameters = initialize_parameters(layer_dims)
 
     costs = []
@@ -200,7 +187,7 @@ def train(X, Y, num_iterations, lr=0.01):
         AL, caches = forward_prop(X, parameters)
         cost = cross_entropy_with_L2(AL, Y, parameters, lambd=0.01)
         grads = backpropagation(AL, Y, caches)
-        parameters = grad_desc(parameters, grads, lr=0.01)
+        parameters = grad_desc(parameters, grads, lr)
 
         if i % 100 == 0:
             print(f'Cost after iteration {i}: {cost}')
@@ -216,16 +203,17 @@ def train(X, Y, num_iterations, lr=0.01):
 
 def predict(X, params):
     AL, _ = forward_prop(X, params)
-    predictions = (AL > 0.5).astype(int)
+    #predictions = (AL > 0.5).astype(int)
 
-    return predictions
+    return AL
 
-parameters = train(X_train, Y_train, num_iterations=2000, lr=0.01)
+parameters = train(X_train, Y_train, num_iterations=12000, lr=0.01)
+
 Y_pred_train = predict(X_train, parameters)
 Y_pred_test = predict(X_test, parameters)
 
-train_accuracy = np.mean(Y_pred_train == Y_train) * 100
-test_accuracy = np.mean(Y_pred_test == Y_test) * 100
+train_mse = np.mean((Y_pred_train - Y_train) ** 2)
+test_mse = np.mean((Y_pred_test - Y_test) ** 2)
 
-print(f'\nTrain accuracy: {train_accuracy:.2f}%')
-print(f'Test accuracy: {test_accuracy:.2f}%')
+print(f'\nTrain MSE: {train_mse:.4f}')
+print(f'Test MSE: {test_mse:.4f}')
