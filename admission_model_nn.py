@@ -165,7 +165,7 @@ def backpropagation(AL, Y, caches):
 
 # /---------------------------------------/
 # Gradient descent
-def grad_desc(parameters, grads, lr):
+def grad_desc(parameters, grads, lr):  # TODO replace with Adam (Adam initialization & parameters update with Adam)
     #params = parameters.copy()
     L = len(parameters) // 2
 
@@ -174,20 +174,60 @@ def grad_desc(parameters, grads, lr):
         parameters['b' + str(l+1)] = parameters['b' + str(l+1)] - lr * grads['db' + str(l+1)]
 
     return parameters
-                                                            
+
+
+def adam_optimization(parameters, grads, t, lr, beta1, beta2, epsilon):
+    L = len(parameters) // 2
+    v = {}
+    s = {}
+    v_corrected = {}
+    s_corrected = {}
+
+    for l in range(1, L + 1):
+        # Adam moments initialization
+        v['dW' + str(l)] = np.zeros((parameters["W" + str(l)].shape))
+        v['db' + str(l)] = np.zeros((parameters['b' + str(l)].shape))
+        s['dW' + str(l)] = np.zeros((parameters['W' + str(l)].shape))
+        s['db' + str(l)] = np.zeros((parameters['b' + str(l)].shape))
+
+    t += 1
+
+    for l in range(1, L + 1):
+        # Moment #1
+        v['dW' + str(l)] = beta1 * v['dW' + str(l)] + (1 - beta1) * grads['dW' + str(l)]
+        v['db' + str(l)] = beta1 * v['db' + str(l)] + (1 - beta1) * grads['db' + str(l)]
+
+        v_corrected['dW' + str(l)] = v['dW' + str(l)] / (1 - (beta1 ** t))
+        v_corrected['db' + str(l)] = v['db' + str(l)] / (1 - (beta1 ** t))
+
+        # Moment #2
+        s['dW' + str(l)] = beta2 * s['dW' + str(l)] + (1 - beta2) * np.square(grads['dW' + str(l)])
+        s['db' + str(l)] = beta2 * s['db' + str(l)] + (1 - beta2) * np.square(grads['db' + str(l)])
+
+        s_corrected['dW' + str(l)] = s['dW' + str(l)] / (1 - (beta2 ** t))
+        s_corrected['db' + str(l)] = s['db' + str(l)] / (1 - (beta2 ** t))
+
+        # Parameter update
+        parameters['W' + str(l)] = parameters['W' + str(l)] - lr * (v_corrected['dW' + str(l)] / (np.sqrt(s_corrected['dW' + str(l)]) + epsilon))
+        parameters['b' + str(l)] = parameters['b' + str(l)] - lr * (v_corrected['db' + str(l)] / (np.sqrt(s_corrected['db' + str(l)]) + epsilon))
+
+    return parameters, s, v, s_corrected, v_corrected
+
 # /---------------------------------------/
 # Training
-def train(X, Y, num_iterations, lr=0.01):
+def train(X, Y, num_iterations, lr=0.00005):
     n_0 = X_train.shape[0]
-    layer_dims = [n_0, 30, 8, 5, 3, 1]  #[n_0, 10, 5, 1]  [n_0, 30, 8, 5, 3, 1]
+    layer_dims = [n_0, 30, 3, 1]  #[n_0, 10, 5, 1]  [n_0, 20, 10, 5, 1]
     parameters = initialize_parameters(layer_dims)
 
     costs = []
+    t = 0
     for i in range(num_iterations):
         AL, caches = forward_prop(X, parameters)
-        cost = cross_entropy_with_L2(AL, Y, parameters, lambd=0.01)
+        cost = cross_entropy_with_L2(AL, Y, parameters, lambd=1e-7)
         grads = backpropagation(AL, Y, caches)
-        parameters = grad_desc(parameters, grads, lr)
+        #parameters = grad_desc(parameters, grads, lr)
+        parameters, _, _, _, _ = adam_optimization(parameters, grads, t, lr, beta1=0.9, beta2=0.999, epsilon=1e-8)
 
         if i % 100 == 0:
             print(f'Cost after iteration {i}: {cost}')
@@ -207,7 +247,7 @@ def predict(X, params):
 
     return AL
 
-parameters = train(X_train, Y_train, num_iterations=12000, lr=0.01)
+parameters = train(X_train, Y_train, num_iterations=15000, lr=0.00005)
 
 Y_pred_train = predict(X_train, parameters)
 Y_pred_test = predict(X_test, parameters)
