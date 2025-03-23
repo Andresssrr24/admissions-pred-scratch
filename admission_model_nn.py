@@ -1,22 +1,34 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split  # TODO build from scratch instead
-from sklearn.preprocessing import StandardScaler  # TODO build from scratch instead
+from sklearn.preprocessing import MinMaxScaler  # TODO build from scratch instead
 
 # Data processing
-dataset = pd.read_csv('/Users/Admin/Documents/MachineLearning/datasets/Admission_Predict_Ver1.1.csv')
-# Convert the column chance of admit to 0 or 1
-dataset['Chance of Admit'] = (dataset['Chance of Admit ']) #>= 0.5).astype(int)
+dataset = pd.read_csv('.../Admission_Predict_Ver1.1.csv')
+dataset['Chance of Admit'] = (dataset['Chance of Admit '])
+
+# Split dataset (X, Y)
+X = dataset[['GRE Score', 'TOEFL Score', 'University Rating', 'SOP', 'LOR ', 'CGPA', 'Research']]
+Y = dataset[['Chance of Admit']]
+
+# Split dataset (train, test)
+dataset = dataset.sample(frac=1)
+
 # Load dataset
 X = dataset[['GRE Score', 'TOEFL Score', 'University Rating', 'SOP', 'LOR ', 'CGPA', 'Research']]
 Y = dataset[['Chance of Admit']]
-#print(X)
-#print(Y)
 
-# Data segmentation
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
-scaler = StandardScaler()
+train_sets_ratio = 0.8
+test_sets_ratio = 0.2
+
+X_train = X[:int(len(X) * train_sets_ratio)]
+Y_train = Y[:int(len(Y) * train_sets_ratio)]
+
+X_test =  X[:int(len(X) * test_sets_ratio)]
+Y_test =  Y[:int(len(Y) * test_sets_ratio)] 
+
+# Input normalization
+scaler = MinMaxScaler()
 X_train = scaler.fit_transform(X_train).T  # Shape (7, 400)
 X_test = scaler.transform(X_test).T  # Shape (7, 100)
 Y_train = Y_train.values.reshape(1 , -1) # (1, 400)
@@ -92,11 +104,11 @@ def forward_prop(X, parameters):
 
 # /---------------------------------------/
 # Cost computation
-def cross_entropy_with_L2(AL, Y, parameters, lambd):
+def mean_squared_error_with_L2(AL, Y, parameters, lambd):
     m = Y.shape[1]
     AL = np.clip(AL, 1e-10, 1 - 1e-10) # Add epsilon to avoid log(0)
 
-    cost = -1/m * np.sum(Y * np.log(AL) + (1 - Y) * np.log(1 - AL)) 
+    cost = (1 / (2 * m)) * np.sum((AL - Y) ** 2)
 
     L2_regularization = 0
     for key in parameters.keys():
@@ -165,7 +177,7 @@ def backpropagation(AL, Y, caches):
 
 # /---------------------------------------/
 # Gradient descent
-def grad_desc(parameters, grads, lr):  # TODO replace with Adam (Adam initialization & parameters update with Adam)
+def grad_desc(parameters, grads, lr):  
     #params = parameters.copy()
     L = len(parameters) // 2
 
@@ -215,18 +227,17 @@ def adam_optimization(parameters, grads, t, lr, beta1, beta2, epsilon):
 
 # /---------------------------------------/
 # Training
-def train(X, Y, num_iterations, lr=0.00005):
+def train(X, Y, num_iterations, lr=0.0001):
     n_0 = X_train.shape[0]
-    layer_dims = [n_0, 30, 3, 1]  #[n_0, 10, 5, 1]  [n_0, 20, 10, 5, 1]
+    layer_dims = [n_0, 7, 7, 1]  #[n_0, 10, 5, 1]  [n_0, 7, 7, 1]
     parameters = initialize_parameters(layer_dims)
 
     costs = []
     t = 0
     for i in range(num_iterations):
         AL, caches = forward_prop(X, parameters)
-        cost = cross_entropy_with_L2(AL, Y, parameters, lambd=1e-7)
+        cost = mean_squared_error_with_L2(AL, Y, parameters, lambd=0.0001)
         grads = backpropagation(AL, Y, caches)
-        #parameters = grad_desc(parameters, grads, lr)
         parameters, _, _, _, _ = adam_optimization(parameters, grads, t, lr, beta1=0.9, beta2=0.999, epsilon=1e-8)
 
         if i % 100 == 0:
@@ -247,7 +258,7 @@ def predict(X, params):
 
     return AL
 
-parameters = train(X_train, Y_train, num_iterations=15000, lr=0.00005)
+parameters = train(X_train, Y_train, num_iterations=12000, lr=0.0001)
 
 Y_pred_train = predict(X_train, parameters)
 Y_pred_test = predict(X_test, parameters)
