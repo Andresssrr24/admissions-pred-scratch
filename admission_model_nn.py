@@ -2,10 +2,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 # Data processing
-dataset = pd.read_csv('/Users/Admin/Documents/MachineLearning/datasets/Admission_Predict_Ver1.1.csv')
+dataset = pd.read_csv('.../Admission_Predict_Ver1.1.csv')
 dataset['Chance of Admit'] = (dataset['Chance of Admit '])
 
 # Split dataset (X, Y)
@@ -17,8 +18,8 @@ dataset = dataset.sample(frac=1)
 
 # Split dataset (train, test)
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
-train_sets_ratio = 0.8
-test_sets_ratio = 0.2
+'''train_sets_ratio = 0.8
+test_sets_ratio = 0.2'''
 
 '''X_train = X[:int(len(X) * train_sets_ratio)]
 Y_train = Y[:int(len(Y) * train_sets_ratio)]
@@ -28,17 +29,25 @@ Y_test =  Y[:int(len(Y) * test_sets_ratio)] '''
 
 # /---------------------------------------/
 # Input normalization
-scaler = MinMaxScaler()
+
+scaler = ColumnTransformer(
+    transformers=[
+        ('numeric_features', StandardScaler(), ['GRE Score', 'TOEFL Score', 'CGPA']),
+        ('ordinal_fatures', MinMaxScaler(), ['University Rating', 'SOP', 'LOR ']),
+        ('binary_features', 'passthrough', ['Research'])
+    ])
 
 X_train = scaler.fit_transform(X_train).T  # Shape (7, 400)
 X_test = scaler.fit_transform(X_test).T  # Shape (7, 100)
 Y_train = Y_train.values.reshape(1 , -1) # (1, 400)
-Y_test = Y_test.values.reshape(1, -1) # (1, 100)
+Y_test = Y_test.values.reshape(1, -1) # (1, 100)'''
 
-def input_normalization(X, min=0, max=1):
-    std = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
-    X_scaled = std * (max - min) + min
-    return X_scaled 
+'''def input_normalization(X):
+    data_min = np.min(X)
+    data_max = np.max(X)
+    X_norm = (X - data_min) / (data_max - data_min + 1e-8)
+
+    return X_norm'''
 
 '''X_train = input_normalization(X_train).T  # Shape (7, 400)
 X_test = input_normalization(X_test).T  # Shape (7, 100)
@@ -238,16 +247,16 @@ def adam_optimization(parameters, grads, t, lr, beta1, beta2, epsilon):
 
 # /---------------------------------------/
 # Training
-def train(X, Y, num_iterations, lr=0.0001):
+def train(X, Y, num_iterations, lr=0.0002): # 1(0.0002)
     n_0 = X_train.shape[0]
-    layer_dims = [n_0, 7, 7, 1]  #[n_0, 10, 5, 1]  [n_0, 7, 7, 1]
+    layer_dims = [n_0, 7, 5, 3, 1]  # 1[n_0, 7, 5, 3, 1]  2[n_0, 7, 7, 3, 1]
     parameters = initialize_parameters(layer_dims)
 
     costs = []
     t = 0
     for i in range(num_iterations):
         AL, caches = forward_prop(X, parameters)
-        cost = mean_squared_error_with_L2(AL, Y, parameters, lambd=0.0001)
+        cost = mean_squared_error_with_L2(AL, Y, parameters, lambd=0.00003) # 1(0.00003)
         grads = backpropagation(AL, Y, caches)
         parameters, _, _, _, _ = adam_optimization(parameters, grads, t, lr, beta1=0.9, beta2=0.999, epsilon=1e-8)
 
@@ -273,7 +282,7 @@ def predict(X, params):
 
 # /---------------------------------------/
 if __name__ == '__main__':
-    parameters = train(X_train, Y_train, num_iterations=12000, lr=0.0001)
+    parameters = train(X_train, Y_train, num_iterations=15000, lr=0.0002) # 1(15000, 0.0002)
 
     Y_pred_train = predict(X_train, parameters)
     Y_pred_test = predict(X_test, parameters)
@@ -286,4 +295,4 @@ if __name__ == '__main__':
 
     # /---------------------------------------/ 
     # Save model
-    np.savez('/Users/Admin/Documents/MachineLearning/university_admission_pred/model_parameters.npz', **parameters)
+    np.savez('.../model_parameters2.npz', **parameters)
