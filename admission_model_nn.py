@@ -6,7 +6,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 # Data processing
-dataset = pd.read_csv('.../Admission_Predict_Ver1.1.csv')
+dataset = pd.read_csv('/Users/Admin/Documents/MachineLearning/datasets/Admission_Predict_Ver1.1.csv')
 dataset['Chance of Admit'] = (dataset['Chance of Admit '])
 
 # Split dataset (X, Y)
@@ -247,16 +247,16 @@ def adam_optimization(parameters, grads, t, lr, beta1, beta2, epsilon):
 
 # /---------------------------------------/
 # Training
-def train(X, Y, num_iterations, lr=0.0002): # 1(0.0002)
+def train(X, Y, num_iterations, lr=0.00008): # 1(0.00008)
     n_0 = X_train.shape[0]
-    layer_dims = [n_0, 7, 5, 3, 1]  # 1[n_0, 7, 5, 3, 1]  2[n_0, 7, 7, 3, 1]
+    layer_dims = [n_0, 7, 7, 3, 1]  # 1[n_0, 7, 5, 3, 1]  2[n_0, 7, 7, 3, 1]
     parameters = initialize_parameters(layer_dims)
 
     costs = []
     t = 0
     for i in range(num_iterations):
         AL, caches = forward_prop(X, parameters)
-        cost = mean_squared_error_with_L2(AL, Y, parameters, lambd=0.00003) # 1(0.00003)
+        cost = mean_squared_error_with_L2(AL, Y, parameters, lambd=0.00008) # 1(0.00008)
         grads = backpropagation(AL, Y, caches)
         parameters, _, _, _, _ = adam_optimization(parameters, grads, t, lr, beta1=0.9, beta2=0.999, epsilon=1e-8)
 
@@ -282,7 +282,7 @@ def predict(X, params):
 
 # /---------------------------------------/
 if __name__ == '__main__':
-    parameters = train(X_train, Y_train, num_iterations=15000, lr=0.0002) # 1(15000, 0.0002)
+    parameters = train(X_train, Y_train, num_iterations=15000, lr=0.00008) # 1(16000, 0.00008)
 
     Y_pred_train = predict(X_train, parameters)
     Y_pred_test = predict(X_test, parameters)
@@ -295,4 +295,4 @@ if __name__ == '__main__':
 
     # /---------------------------------------/ 
     # Save model
-    np.savez('.../model_parameters2.npz', **parameters)
+    np.savez('model_parameters_3.npz', **parameters) # best model_parameters_4 0.37 Test MSE
